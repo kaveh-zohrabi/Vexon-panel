@@ -1,6 +1,5 @@
 # relay_vless.py
-# بخش VLESS Relay — جدا شده از main.py (منطق اصلی دست‌نخورده)
-# تغییر: ثبت IP واقعی کلاینت (با احتساب هدر x-forwarded-for پشت پراکسی) در connections
+# VLESS Relay — مدیریت اتصالات WebSocket و تونل‌زنی
 
 import asyncio
 import os

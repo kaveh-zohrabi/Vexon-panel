@@ -1,6 +1,5 @@
 # speed_limit.py
 # محدودیت سرعت (Bandwidth Throttling) به‌ازای هر کانفیگ — پیاده‌سازی با الگوی Token Bucket
-# جدا شده از relay_vless.py و xhttp_siz10.py؛ هر دو این ماژول رو صدا می‌زنن (منطق اونا دست‌نخورده).
 
 import asyncio
 import time

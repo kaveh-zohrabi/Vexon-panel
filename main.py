@@ -35,19 +35,19 @@ from fastapi.responses import Response, HTMLResponse, JSONResponse, RedirectResp
 from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("X4G")
+logger = logging.getLogger("Vexon")
 
 IRAN_TZ = ZoneInfo("Asia/Tehran")
 
-app = FastAPI(title="X4G", docs_url=None, redoc_url=None)
+app = FastAPI(title="Vexon-panel", docs_url=None, redoc_url=None)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Persistence
 # ══════════════════════════════════════════════════════════════════════════════
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
-DATA_FILE = DATA_DIR / "x4g_state.json"
-SECRET_FILE = DATA_DIR / "x4g_secret.key"
-ADMIN_PW_FILE = DATA_DIR / "x4g_admin_pw.txt"
+DATA_FILE = DATA_DIR / "vexon_state.json"
+SECRET_FILE = DATA_DIR / "vexon_secret.key"
+ADMIN_PW_FILE = DATA_DIR / "vexon_admin_pw.txt"
 SAVE_LOCK = asyncio.Lock()
 
 def _load_or_create_secret() -> str:
@@ -242,7 +242,7 @@ def log_activity(kind: str, message: str, level: str = "info"):
 # ══════════════════════════════════════════════════════════════════════════════
 # Auth — چندکاربره با TOTP
 # ══════════════════════════════════════════════════════════════════════════════
-SESSION_COOKIE = "x4g_session"
+SESSION_COOKIE = "vexon_session"
 SESSION_TTL = 60 * 60 * 24 * 365
 
 # ساختار USERS: { "username": { "password_hash": str, "role": "admin"|"viewer", "totp_secret": str|None, "totp_enabled": bool, "created_at": str } }
@@ -364,7 +364,7 @@ async def startup():
             await save_state()
     await _tg_start_bot()
     log_activity("system", "سرور راه‌اندازی شد", "ok")
-    logger.info(f"X4G v10.0 started on port {CONFIG['port']}")
+    logger.info(f"Vexon-panel v1.0.0 started on port {CONFIG['port']}")
     if not AUTH.get("password_changed"):
         logger.info(f"🔑 رمز اولیه پنل (admin): {_initial_admin_pw}")
         logger.info(f"🔑 اگر رمز رندوم بود، حتماً آن را یادداشت کنید!")
@@ -398,7 +398,7 @@ def now_ir() -> datetime:
 def generate_vless_link(
     uuid: str,
     host: str,
-    remark: str = "X4G",
+    remark: str = "Vexon",
     protocol: str = DEFAULT_PROTOCOL,
     fingerprint: str | None = None,
     alpn: str | None = None,
@@ -425,7 +425,7 @@ def generate_vless_link(
             "alpn": alpn_val,
         }
     else:
-        path = f"/xhttp-siz10/{uuid}"
+        path = f"/xhttp/{uuid}"
         params = {
             "encryption": "none",
             "security": "tls",
@@ -444,7 +444,7 @@ def vless_link_for_link(link: dict, uid: str, host: str) -> str:
     proto = link.get("protocol", DEFAULT_PROTOCOL)
     return generate_vless_link(
         uid, host,
-        remark=f"X4G-{link.get('label','')}",
+        remark=f"Vexon-{link.get('label','')}",
         protocol=proto,
         fingerprint=link.get("fingerprint"),
         alpn=link.get("alpn"),
@@ -530,7 +530,7 @@ def client_ip(request: Request) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 @app.get("/")
 async def root():
-    return {"service": "X4G", "version": "10.0", "status": "active", "channel": "https://t.me/X4GHUB"}
+    return {"service": "Vexon-panel", "version": "1.0.0", "status": "active"}
 
 @app.get("/health")
 async def health():
@@ -549,7 +549,7 @@ async def subscription_single(uuid: str, request: Request):
     vless = vless_link_for_link(link, uuid, host)
     content = base64.b64encode(vless.encode()).decode()
     return Response(content=content, media_type="text/plain",
-                    headers={"profile-title": quote(link["label"]), "support-url": "https://t.me/X4GHUB"})
+                    headers={"profile-title": quote(link["label"])})
 
 @app.get("/sub-all")
 async def subscription_all(request: Request, _=Depends(require_auth)):
@@ -714,7 +714,7 @@ async def totp_setup(request: Request, token=Depends(require_auth)):
         user["totp_secret"] = secret
         await save_state()
     totp = pyotp.TOTP(secret)
-    provisioning_uri = totp.provisioning_uri(name=username, issuer_name="X4G")
+    provisioning_uri = totp.provisioning_uri(name=username, issuer_name="Vexon-panel")
     return {"secret": secret, "otpauth_url": provisioning_uri}
 
 @app.post("/api/totp/verify")
@@ -1097,7 +1097,7 @@ async def export_links_csv(_=Depends(require_auth)):
     return Response(
         content=content,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=x4g_links.csv"},
+        headers={"Content-Disposition": "attachment; filename=vexon_links.csv"},
     )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1114,7 +1114,7 @@ from relay_vless import (
 
 app.add_api_websocket_route("/ws/{uuid}", websocket_tunnel)
 
-from xhttp_siz10 import router as xhttp_router
+from xhttp import router as xhttp_router
 app.include_router(xhttp_router)
 
 from telegram_bot import start_bot as _tg_start_bot, stop_bot as _tg_stop_bot
@@ -1253,27 +1253,27 @@ async def test_ws_redirect():
 @app.get("/metrics")
 async def prometheus_metrics():
     uptime_secs = int(time.time() - stats["start_time"])
-    metrics = f"""# HELP x4g_connections_active تعداد اتصالات فعال
-# TYPE x4g_connections_active gauge
-x4g_connections_active {len(connections)}
-# HELP x4g_bytes_total کل بایت‌های انتقال‌یافته
-# TYPE x4g_bytes_total counter
-x4g_bytes_total {stats["total_bytes"]}
-# HELP x4g_requests_total کل درخواست‌ها
-# TYPE x4g_requests_total counter
-x4g_requests_total {stats["total_requests"]}
-# HELP x4g_errors_total کل خطاها
-# TYPE x4g_errors_total counter
-x4g_errors_total {stats["total_errors"]}
-# HELP x4g_links_total تعداد کل کانفیگ‌ها
-# TYPE x4g_links_total gauge
-x4g_links_total {len(LINKS)}
-# HELP x4g_uptime_seconds آپتایم سرور به ثانیه
-# TYPE x4g_uptime_seconds gauge
-x4g_uptime_seconds {uptime_secs}
-# HELP x4g_users_total تعداد کل کاربران
-# TYPE x4g_users_total gauge
-x4g_users_total {len(USERS)}
+    metrics = f"""# HELP vexon_connections_active تعداد اتصالات فعال
+# TYPE vexon_connections_active gauge
+vexon_connections_active {len(connections)}
+# HELP vexon_bytes_total کل بایت‌های انتقال‌یافته
+# TYPE vexon_bytes_total counter
+vexon_bytes_total {stats["total_bytes"]}
+# HELP vexon_requests_total کل درخواست‌ها
+# TYPE vexon_requests_total counter
+vexon_requests_total {stats["total_requests"]}
+# HELP vexon_errors_total کل خطاها
+# TYPE vexon_errors_total counter
+vexon_errors_total {stats["total_errors"]}
+# HELP vexon_links_total تعداد کل کانفیگ‌ها
+# TYPE vexon_links_total gauge
+vexon_links_total {len(LINKS)}
+# HELP vexon_uptime_seconds آپتایم سرور به ثانیه
+# TYPE vexon_uptime_seconds gauge
+vexon_uptime_seconds {uptime_secs}
+# HELP vexon_users_total تعداد کل کاربران
+# TYPE vexon_users_total gauge
+vexon_users_total {len(USERS)}
 """
     return Response(content=metrics, media_type="text/plain; version=0.0.4; charset=utf-8")
 

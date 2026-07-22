@@ -1,6 +1,6 @@
-# xhttp_siz10.py
+# xhttp.py
 # ══════════════════════════════════════════════════════════════════════════════
-# Siz10a · XHTTP Ultra Transport — مود auto (packet-up / stream-up)
+# XHTTP Ultra Transport — مود auto (packet-up / stream-up)
 #  مسیر سرور دیگه به مود بستگی نداره (مطابق رفتار واقعی mode=auto در Xray):
 #  کلاینت خودش بر اساس نوع اتصال (H2/REALITY یا نه) بین packet-up و
 #  stream-up انتخاب می‌کنه، و مود واقعی فقط از روی شکل درخواست POST
@@ -357,7 +357,7 @@ def _downstream_gen(sess: dict):
 
 
 # ══════════════════════════════ GET دانلینک (مشترک بین دو مد، بدون وابستگی به مود) ══════════════════════════════
-@router.get("/xhttp-siz10/{uuid}/{session_id}")
+@router.get("/xhttp/{uuid}/{session_id}")
 async def xhttp_downlink(uuid: str, session_id: str, request: Request):
     ensure_reaper()
     await _check_link(uuid)
@@ -371,7 +371,7 @@ async def xhttp_downlink(uuid: str, session_id: str, request: Request):
 
 
 # ══════════════════════════════ PACKET-UP (آپلینک با seq) ══════════════════════════════
-@router.post("/xhttp-siz10/{uuid}/{session_id}/{seq}")
+@router.post("/xhttp/{uuid}/{session_id}/{seq}")
 async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Request):
     ensure_reaper()
     sess = await _get_or_create_session(uuid, "packet-up", session_id, _req_client_ip(request))
@@ -433,7 +433,7 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
 # موتور تطبیقی: _QuotaGate (batch کوتا بر اساس نرخ واقعی) + _AdaptiveFlow (AIMD روی
 # high-water درین) + کش رفرنس‌ها داخل لوپ. هیچ داده‌ای بافر/coalesce نمی‌شه —
 # هر بایت فوری write() می‌شه، فقط «کِی صبر کنیم برای drain» تطبیقیه.
-@router.post("/xhttp-siz10/{uuid}/{session_id}")
+@router.post("/xhttp/{uuid}/{session_id}")
 async def stream_up_upload(uuid: str, session_id: str, request: Request):
     ensure_reaper()
     sess = await _get_or_create_session(uuid, "stream-up", session_id, _req_client_ip(request))

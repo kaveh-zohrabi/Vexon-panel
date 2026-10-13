@@ -784,6 +784,66 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
 </div>
+<div class="modal-bg" id="modal-sub-editor">
+  <div class="modal-v2">
+    <div class="modal-v2-head">
+      <button class="modal-v2-close" onclick="closeModal('modal-sub-editor')"><i class="ti ti-x"></i></button>
+      <div class="modal-v2-icon"><i class="ti ti-folder-plus"></i></div>
+      <div class="modal-v2-title" id="se-title">ساخت گروه ساب جدید</div>
+      <div class="modal-v2-sub">چند کانفیگ را انتخاب و یک لینک ساب یکپارچه ایجاد کنید</div>
+    </div>
+    <div class="modal-v2-body">
+      <input type="hidden" id="se-id">
+      <div class="modal-v2-field">
+        <label><i class="ti ti-id"></i> نام گروه</label>
+        <div class="modal-v2-input-wrap"><i class="ti ti-folder"></i><input class="modal-v2-input" id="se-name" placeholder="مثلاً: کاربران ویژه VIP"></div>
+      </div>
+      <div class="modal-v2-field">
+        <label><i class="ti ti-notes"></i> توضیحات</label>
+        <div class="modal-v2-input-wrap"><i class="ti ti-file-text"></i><input class="modal-v2-input" id="se-desc" placeholder="توضیحات کوتاه برای نمایش در صفحه عمومی"></div>
+      </div>
+      <div class="modal-v2-field">
+        <label><i class="ti ti-lock"></i> رمز عبور صفحه عمومی (اختیاری)</label>
+        <div class="modal-v2-input-wrap"><i class="ti ti-key"></i><input class="modal-v2-input" type="password" id="se-pw" placeholder="خالی بگذارید تا بدون رمز باشد"></div>
+      </div>
+      <div class="modal-v2-hint"><i class="ti ti-info-circle"></i><span>کانفیگ‌های انتخاب‌شده پس از ذخیره در این گروه قرار می‌گیرند.</span></div>
+      <div class="modal-v2-footer">
+        <button class="modal-v2-btn-cancel" onclick="closeModal('modal-sub-editor')">انصراف</button>
+        <button class="modal-v2-btn-submit" onclick="saveSubGroup()"><i class="ti ti-check"></i> ذخیره گروه</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-sub-links">
+  <div class="modal" style="max-width:560px;padding:0;overflow:hidden">
+    <div class="lmodal-head">
+      <button class="modal-close" onclick="closeModal('modal-sub-links')"><i class="ti ti-x"></i></button>
+      <div class="lmodal-icon-row">
+        <div class="lmodal-icon"><i class="ti ti-link"></i></div>
+        <div>
+          <div class="lmodal-title-v2" id="sl-title">انتخاب کانفیگ‌ها</div>
+          <div class="lmodal-sub-v2">کانفیگ‌های مجاز برای حضور در این گروه ساب را تیک بزنید</div>
+        </div>
+      </div>
+      <div class="lmodal-search"><i class="ti ti-search"></i><input id="sl-search" placeholder="جستجوی کانفیگ..." oninput="renderSubLinkSelectorList()"></div>
+      <div class="lmodal-quickbar">
+        <button class="lmodal-qbtn" onclick="selectSubLinksAll(true)">انتخاب همه</button>
+        <button class="lmodal-qbtn" onclick="selectSubLinksAll(false)">لغو همه</button>
+        <span class="lmodal-count" id="sl-sel-count">۰ انتخاب شده</span>
+      </div>
+    </div>
+    <div class="lmodal-list" id="sl-list"></div>
+    <div class="lmodal-footer">
+      <div class="lmodal-footer-info"><i class="ti ti-info-circle"></i> تغییرات پس از کلیک بر ذخیره اعمال می‌شود</div>
+      <div class="lmodal-footer-btns">
+        <button class="btn btn-o" onclick="closeModal('modal-sub-links')">انصراف</button>
+        <button class="btn btn-p" onclick="saveSubGroupLinks()"><i class="ti ti-check"></i> ذخیره تغییرات</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-link-chart">
   <div class="modal" style="max-width:640px">
     <button class="modal-close" onclick="closeModal('modal-link-chart')"><i class="ti ti-x"></i></button>
@@ -812,6 +872,7 @@ a{color:inherit;text-decoration:none}
     <div class="nav-sec">پنل</div>
     <div class="nav-it on" data-pg="overview"><i class="ti ti-layout-dashboard"></i> داشبورد</div>
     <div class="nav-it" data-pg="links"><i class="ti ti-link-plus"></i> کانفیگ‌ها <span class="nav-badge" id="links-nb">0</span></div>
+    <div class="nav-it" data-pg="subs"><i class="ti ti-folders"></i> گروه‌های ساب <span class="nav-badge" id="subs-nb">0</span></div>
     <div class="nav-it" data-pg="cfgdash"><i class="ti ti-chart-infographic"></i> داشبورد کانفیگ‌ها</div>
     <div class="nav-it" data-pg="traffic"><i class="ti ti-chart-area"></i> ترافیک</div>
     <div class="nav-it" data-pg="connections"><i class="ti ti-plug-connected"></i> اتصالات <span class="nav-badge" id="conns-nb">0</span></div>
@@ -868,7 +929,6 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
   <div class="dash-footer">
-    <span class="df-text">Vexon-panel v1.0.0</span>
     <span class="df-text">Vexon-panel v1.0.0</span>
   </div>
 </section>
@@ -1007,6 +1067,7 @@ a{color:inherit;text-decoration:none}
       </div>
       <div class="cp-footer">
         <div class="cp-footer-note"><i class="ti ti-info-circle"></i> UUID کاملاً رندوم تولید می‌شود · فقط UUID‌های ثبت‌شده اجازه اتصال دارند · پروتکل پس از ساخت قابل تغییر نیست.</div>
+    <div class="fg" style="flex:0 0 120px;margin-bottom:0"><label>پورت اتصال</label><input class="cp-input-full" id="nl-port" type="number" min="1" max="65535" value="443"></div>
         <button class="cp-submit-btn" onclick="createLink()"><i class="ti ti-link-plus"></i> ساخت کانفیگ</button>
       </div>
     </div>
@@ -1042,6 +1103,21 @@ a{color:inherit;text-decoration:none}
   <div class="cfg-grid" id="links-grid"></div>
   <div class="empty" id="links-empty" style="display:none"><i class="ti ti-link-off"></i><p>هنوز کانفیگی وجود ندارد</p></div>
   <div class="empty" id="links-empty-search" style="display:none"><i class="ti ti-search-off"></i><p>موردی با این جستجو پیدا نشد</p></div>
+</section>
+<section class="pg" id="pg-subs">
+  <div class="topbar">
+    <div><div class="tb-title"><i class="ti ti-folders"></i> گروه‌های ساب</div><div class="tb-sub">مدیریت گروه‌های کانفیگ با لینک ساب عمومی و اختصاصی</div></div>
+    <div class="tb-right"><button class="btn btn-p btn-sm" onclick="openCreateSubModal()"><i class="ti ti-plus"></i> ساخت گروه جدید</button></div>
+  </div>
+  <div class="subs-toolbar">
+    <div class="subs-search"><i class="ti ti-search"></i><input id="subs-search" placeholder="جستجو در گروه‌های ساب..." oninput="renderSubsGrid()"></div>
+  </div>
+  <div class="sub-grid" id="subs-grid"></div>
+  <div class="subs-empty-v2" id="subs-empty" style="display:none">
+    <div class="subs-empty-v2-icon"><i class="ti ti-folder-off"></i></div>
+    <div class="subs-empty-v2-title">هنوز هیچ گروه سابی ساخته نشده</div>
+    <div class="subs-empty-v2-sub">با ساخت گروه جدید، چند کانفیگ را در یک صفحه و یک لینک ساب تجمیع کنید</div>
+  </div>
 </section>
 <section class="pg" id="pg-cfgdash">
   <div class="topbar">
@@ -1241,6 +1317,26 @@ a{color:inherit;text-decoration:none}
       </div>
     </div>
   </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-title"><i class="ti ti-device-floppy"></i> پشتیبان‌گیری و بازیابی داده‌ها</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-p" onclick="downloadBackup()"><i class="ti ti-download"></i> دانلود فایل پشتیبان (JSON)</button>
+      <label class="btn btn-o" style="cursor:pointer">
+        <i class="ti ti-upload"></i> بازیابی از فایل پشتیبان
+        <input type="file" id="restore-file-input" accept=".json" style="display:none" onchange="uploadBackup(this)">
+      </label>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-title"><i class="ti ti-users"></i> مدیریت کاربران پنل</div>
+    <div class="form-row" style="margin-bottom:14px">
+      <input class="fi" id="nu-uname" placeholder="نام کاربری (حداقل ۳ کاراکتر)">
+      <input class="fi" type="password" id="nu-pass" placeholder="رمز عبور (حداقل ۶ کاراکتر)">
+      <select class="fs" id="nu-role"><option value="viewer">مشاهده‌گر (Viewer)</option><option value="admin">مدیر (Admin)</option></select>
+      <button class="btn btn-p" onclick="createPanelUser()"><i class="ti ti-user-plus"></i> ایجاد کاربر جدید</button>
+    </div>
+    <div id="users-list-wrap">—</div>
+  </div>
 </section>
 <section class="pg" id="pg-support">
   <div class="topbar"><div><div class="tb-title"><i class="ti ti-headset"></i> پشتیبانی</div></div></div>
@@ -1356,9 +1452,72 @@ overlay.addEventListener('click',closeSb);
 function navTo(name){
   document.querySelectorAll('.nav-it').forEach(n=>n.classList.toggle('on',n.dataset.pg===name));
   document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='pg-'+name));
-  const loaders={links:loadLinks,connections:loadConns,errors:loadErrs,logs:loadActivity,cfgdash:loadCfgDash};
+  const loaders={links:loadLinks,subs:loadSubs,connections:loadConns,errors:loadErrs,logs:loadActivity,cfgdash:loadCfgDash,settings:loadSettingsPage};
   if(loaders[name])loaders[name]();
   closeSb();window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function downloadBackup(){
+  window.location.href='/api/system/backup';
+}
+async function uploadBackup(input){
+  const file=input.files[0];
+  if(!file)return;
+  if(!confirm('آیا از بازیابی این فایل پشتیبان مطمئن هستید؟ داده‌های فعلی جایگزین خواهند شد.')){input.value='';return}
+  try{
+    const text=await file.readAsText?file.readAsText():await file.text();
+    const json=JSON.parse(text);
+    const r=await authF('/api/system/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(json)});
+    if(!r.ok)throw new Error();
+    toast('پشتیبان با موفقیت بازیابی شد ✓','ok');
+    setTimeout(()=>location.reload(),1000);
+  }catch(e){toast('خطا در بازیابی فایل پشتیبان','err')}
+  input.value='';
+}
+
+async function loadSettingsPage(){
+  loadUsersList();
+}
+async function loadUsersList(){
+  try{
+    const r=await authF('/api/users');
+    if(!r.ok)return;
+    const {users=[]}=await r.json();
+    const wrap=document.getElementById('users-list-wrap');
+    if(!users.length){wrap.innerHTML='<div class="empty"><p>کاربری یافت نشد</p></div>';return}
+    wrap.innerHTML=users.map(u=>`
+      <div class="sr">
+        <span class="sr-k"><i class="ti ti-user"></i> ${esc(u.username)} <span class="badge ${u.role==='admin'?'bg-purple':'bg-blue'}" style="margin-right:6px">${u.role==='admin'?'مدیر':'مشاهده‌گر'}</span></span>
+        <span class="sr-v">
+          ${u.username!=='admin'?`<button class="btn btn-sm btn-d btn-icon" onclick="deletePanelUser('${esc(u.username)}')" title="حذف کاربر"><i class="ti ti-trash"></i></button>`:''}
+        </span>
+      </div>
+    `).join('');
+  }catch(e){}
+}
+async function createPanelUser(){
+  const username=document.getElementById('nu-uname').value.trim();
+  const password=document.getElementById('nu-pass').value.trim();
+  const role=document.getElementById('nu-role').value;
+  if(!username||!password){toast('نام کاربری و رمز عبور را وارد کنید','err');return}
+  try{
+    const r=await authF('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.detail||'خطا');
+    toast('کاربر جدید ایجاد شد ✓','ok');
+    document.getElementById('nu-uname').value='';
+    document.getElementById('nu-pass').value='';
+    loadUsersList();
+  }catch(e){toast(e.message,'err')}
+}
+async function deletePanelUser(uname){
+  if(!confirm(`آیا از حذف کاربر «${uname}» اطمینان دارید؟`))return;
+  try{
+    const r=await authF('/api/users/'+uname,{method:'DELETE'});
+    if(!r.ok)throw new Error();
+    toast('کاربر حذف شد ✓','ok');
+    loadUsersList();
+  }catch(e){toast('خطا در حذف کاربر','err')}
 }
 document.querySelectorAll('.nav-it').forEach(el=>el.addEventListener('click',()=>navTo(el.dataset.pg)));
 function openModal(id){document.getElementById(id).classList.add('open')}
@@ -1416,6 +1575,169 @@ async function loadActivity(){
     `).join('');
   }catch(e){console.error(e)}
 }
+let allSubsList=[];
+async function loadSubs(){
+  try{
+    const r=await authF('/api/subs');
+    const {subs=[]}=await r.json();
+    allSubsList=subs;
+    const nb=document.getElementById('subs-nb');if(nb)nb.textContent=subs.length;
+    renderSubsGrid();
+  }catch(e){console.error(e)}
+}
+function renderSubsGrid(){
+  const grid=document.getElementById('subs-grid'),empty=document.getElementById('subs-empty');
+  if(!grid)return;
+  const q=(document.getElementById('subs-search')?.value||'').trim().toLowerCase();
+  const list=!q?allSubsList:allSubsList.filter(s=>(s.name||'').toLowerCase().includes(q)||(s.desc||'').toLowerCase().includes(q));
+  if(!allSubsList.length||!list.length){grid.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  grid.innerHTML=list.map(s=>`
+    <div class="sub-card">
+      <div class="sub-card-top">
+        <div class="sub-card-head-v2">
+          <div class="sub-card-icon"><i class="ti ti-folders"></i></div>
+          <div class="sub-card-titles">
+            <div class="sub-card-name-v2">${esc(s.name)}</div>
+            <div class="sub-card-desc-v2">${esc(s.desc||'بدون توضیح')}</div>
+          </div>
+          <div class="sub-card-lock-badge ${s.locked?'locked':'open'}" title="${s.locked?'دارای رمز عبور':'بدون رمز عبور'}">
+            <i class="ti ${s.locked?'ti-lock':'ti-lock-open'}"></i>
+          </div>
+        </div>
+        <div class="sub-card-stats">
+          <div class="sub-card-stat">
+            <div class="sub-card-stat-val">${toFa(s.links_count||0)}</div>
+            <div class="sub-card-stat-label">کانفیگ</div>
+          </div>
+          <div class="sub-card-stat">
+            <div class="sub-card-stat-val">${s.locked?'قفل':'عمومی'}</div>
+            <div class="sub-card-stat-label">دسترسی</div>
+          </div>
+          <div class="sub-card-stat">
+            <div class="sub-card-stat-val">${new Date(s.created_at).toLocaleDateString('fa-IR').slice(-5)}</div>
+            <div class="sub-card-stat-label">ایجاد</div>
+          </div>
+        </div>
+      </div>
+      <div class="sub-card-url-row">
+        <span class="sub-card-url-text">${esc(s.sub_url)}</span>
+        <button class="sub-card-url-copy" onclick="navigator.clipboard.writeText('${esc(s.sub_url)}').then(()=>toast('لینک ساب کپی شد','ok'))" title="کپی لینک عمومی ساب"><i class="ti ti-copy"></i></button>
+      </div>
+      <div class="sub-card-bottom">
+        <button class="btn btn-sm btn-g" onclick="openSubLinkSelector('${s.id}')"><i class="ti ti-link"></i> مدیریت کانفیگ‌ها (${toFa(s.links_count||0)})</button>
+        <button class="btn btn-sm btn-pur" onclick="window.open('${esc(s.sub_url)}','_blank')"><i class="ti ti-external-link"></i> صفحه عمومی</button>
+        <button class="btn btn-sm btn-amber btn-icon" onclick="openEditSubModal('${s.id}')" title="ویرایش"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-d btn-icon" onclick="deleteSubGroup('${s.id}')" title="حذف"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+function openCreateSubModal(){
+  document.getElementById('se-title').textContent='ساخت گروه ساب جدید';
+  document.getElementById('se-id').value='';
+  document.getElementById('se-name').value='';
+  document.getElementById('se-desc').value='';
+  document.getElementById('se-pw').value='';
+  openModal('modal-sub-editor');
+}
+function openEditSubModal(subId){
+  const s=allSubsList.find(x=>x.id===subId);
+  if(!s)return;
+  document.getElementById('se-title').textContent='ویرایش گروه ساب';
+  document.getElementById('se-id').value=subId;
+  document.getElementById('se-name').value=s.name||'';
+  document.getElementById('se-desc').value=s.desc||'';
+  document.getElementById('se-pw').value='';
+  openModal('modal-sub-editor');
+}
+async function saveSubGroup(){
+  const subId=document.getElementById('se-id').value;
+  const name=document.getElementById('se-name').value.trim();
+  const desc=document.getElementById('se-desc').value.trim();
+  const password=document.getElementById('se-pw').value.trim();
+  if(!name){toast('نام گروه الزامی است','err');return}
+  try{
+    if(subId){
+      const body={name,desc};if(password)body.password=password;
+      const r=await authF('/api/subs/'+subId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!r.ok)throw new Error();
+      toast('گروه ساب ویرایش شد ✓','ok');
+    }else{
+      const r=await authF('/api/subs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,desc,password})});
+      if(!r.ok)throw new Error();
+      toast('گروه ساب ساخته شد ✓','ok');
+    }
+    closeModal('modal-sub-editor');
+    loadSubs();
+  }catch(e){toast('خطا در ذخیره گروه','err')}
+}
+async function deleteSubGroup(subId){
+  if(!confirm('آیا از حذف این گروه ساب اطمینان دارید؟'))return;
+  try{
+    const r=await authF('/api/subs/'+subId,{method:'DELETE'});
+    if(!r.ok)throw new Error();
+    toast('گروه ساب حذف شد ✓','ok');
+    loadSubs();
+  }catch(e){toast('خطا در حذف','err')}
+}
+
+let activeSubIdForLinks=null;
+let activeSubUuids=new Set();
+async function openSubLinkSelector(subId){
+  activeSubIdForLinks=subId;
+  const s=allSubsList.find(x=>x.id===subId);
+  if(!s)return;
+  activeSubUuids=new Set(s.uuids||[]);
+  document.getElementById('sl-title').textContent='انتخاب کانفیگ‌ها برای «'+s.name+'»';
+  document.getElementById('sl-search').value='';
+  if(!allLinksList.length)await loadLinks();
+  renderSubLinkSelectorList();
+  openModal('modal-sub-links');
+}
+function selectSubLinksAll(status){
+  if(status)allLinksList.forEach(l=>activeSubUuids.add(l.uuid));
+  else activeSubUuids.clear();
+  renderSubLinkSelectorList();
+}
+function renderSubLinkSelectorList(){
+  const listEl=document.getElementById('sl-list');
+  const q=(document.getElementById('sl-search')?.value||'').trim().toLowerCase();
+  const filtered=!q?allLinksList:allLinksList.filter(l=>(l.label||'').toLowerCase().includes(q)||(l.uuid||'').toLowerCase().includes(q));
+  document.getElementById('sl-sel-count').textContent=toFa(activeSubUuids.size)+' انتخاب شده';
+  if(!filtered.length){listEl.innerHTML='<div class="empty"><p>کانفیگی پیدا نشد</p></div>';return}
+  listEl.innerHTML=filtered.map(l=>{
+    const checked=activeSubUuids.has(l.uuid);
+    return `<div class="lrow-v2 ${checked?'checked':''}" onclick="toggleSubLinkCheck('${l.uuid}')">
+      <div class="lrow-v2-check"><i class="ti ti-check"></i></div>
+      <div class="lrow-v2-avatar"><i class="ti ti-key"></i></div>
+      <div class="lrow-v2-info">
+        <div class="lrow-v2-name">${esc(l.label)}</div>
+        <div class="lrow-v2-meta"><span>${protoBadge(l.protocol)}</span> <span>${fmtB(l.used_bytes)}</span></div>
+      </div>
+      <span class="lrow-v2-status ${l.active&&!l.expired?'on':'off'}">${l.active&&!l.expired?'فعال':'غیرفعال'}</span>
+    </div>`;
+  }).join('');
+}
+function toggleSubLinkCheck(uuid){
+  if(activeSubUuids.has(uuid))activeSubUuids.delete(uuid);else activeSubUuids.add(uuid);
+  renderSubLinkSelectorList();
+}
+async function saveSubGroupLinks(){
+  if(!activeSubIdForLinks)return;
+  try{
+    const r=await authF('/api/subs/'+activeSubIdForLinks,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uuids:Array.from(activeSubUuids)})
+    });
+    if(!r.ok)throw new Error();
+    toast('کانفیگ‌های گروه ذخیره شد ✓','ok');
+    closeModal('modal-sub-links');
+    loadSubs();
+  }catch(e){toast('خطا در ذخیره کانفیگ‌ها','err')}
+}
+
 let allLinksList=[];
 let selectedLinks=new Set();
 async function loadLinks(){
@@ -1572,7 +1894,7 @@ async function createLink(){
   const protocol=document.getElementById('nl-proto').value||'vless-ws';
   const fingerprint=document.getElementById('nl-fp').value||'chrome';
   const alpn=document.getElementById('nl-alpn').value.trim();
-  const port=443;
+  const port=Number(document.getElementById('nl-port').value)||443;
   const ip_limit=Number(document.getElementById('nl-iplimit').value)||0;
   const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
   const speed_limit_unit=document.getElementById('nl-speed-unit').value;
@@ -1810,7 +2132,7 @@ function renderCfgDashDetail(uuid){
 async function loadErrs(){try{const r=await authF('/stats'),d=await r.json();renderErrs(d.recent_errors||[]);}catch(e){}}
 function cpText(id){navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>toast('کپی شد ✓','ok'))}
 function qrFor(id){showQR(document.getElementById(id).textContent)}
-function refreshAll(){fetchStats();loadLinks();if(document.getElementById('pg-connections').classList.contains('on'))loadConns();if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();toast('رفرش شد','ok')}
+function refreshAll(){fetchStats();loadLinks();loadSubs();if(document.getElementById('pg-connections').classList.contains('on'))loadConns();if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();toast('رفرش شد','ok')}
 async function changePw(){
   const cur=document.getElementById('cp-cur').value,nw=document.getElementById('cp-new').value,cf=document.getElementById('cp-cf').value;
   if(!cur||!nw||!cf){toast('همه فیلدها را پر کنید','err');return}
@@ -1936,6 +2258,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   setInterval(fetchStats,4000);
   setInterval(()=>{
     if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
+    if(document.getElementById('pg-subs').classList.contains('on'))loadSubs();
     if(document.getElementById('pg-connections').classList.contains('on'))loadConns();
     if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();
     if(document.getElementById('pg-cfgdash').classList.contains('on'))loadCfgDash();
@@ -1948,6 +2271,128 @@ document.addEventListener('DOMContentLoaded',async()=>{
 # جایگزینی نهایی لوگو در صفحات استاتیک (LOGIN_HTML / DASHBOARD_HTML)
 LOGIN_HTML = LOGIN_HTML.replace("__LOGO_B64__", LOGO_B64)
 DASHBOARD_HTML = DASHBOARD_HTML.replace("__LOGO_B64__", LOGO_B64)
+
+def get_public_group_page_html(sub_id: str) -> str:
+    """صفحه پابلیک گروه ساب"""
+    return f"""<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Vexon Sub Group</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}}
+:root{{
+  --bg:#060a14;--bg2:#0a1020;--bg3:#0d1428;
+  --card:#0c1326;--card-b:rgba(96,148,246,0.12);--card-bh:rgba(96,148,246,0.28);
+  --accent:#3B7CF6;--accent2:#6EA3FF;--accent-d:rgba(59,124,246,0.1);
+  --green:#1FB87E;--green-bg:rgba(31,184,126,0.1);--green-t:#3FD79C;
+  --red:#EF4444;--red-bg:rgba(239,68,68,0.1);--red-t:#FB8585;
+  --amber:#F2A33D;--amber-bg:rgba(242,163,61,0.1);--amber-t:#F9C988;
+  --purple:#9D7BF0;--purple-bg:rgba(157,123,240,0.1);--purple-t:#BCA4F7;
+  --t1:#EFF4FF;--t2:#8AA0C4;--t3:#48577A;
+  --radius:18px;--shadow:0 12px 40px rgba(0,0,0,0.45);
+}}
+[data-theme="light"]{{
+  --bg:#F0F3FA;--bg2:#E5ECF8;--bg3:#D9E3F4;
+  --card:#FFFFFF;--card-b:rgba(59,124,246,0.14);--card-bh:rgba(59,124,246,0.32);
+  --accent:#2E63D6;--accent2:#1E4CB8;--accent-d:rgba(46,99,214,0.08);
+  --green:#0E9A6A;--green-bg:rgba(14,154,106,0.08);--green-t:#0A7553;
+  --red:#DC2626;--red-bg:rgba(220,38,38,0.08);--red-t:#A51E1E;
+  --amber:#C97A12;--amber-bg:rgba(201,122,18,0.08);--amber-t:#8F5A0C;
+  --purple:#7350D6;--purple-bg:rgba(115,80,214,0.08);--purple-t:#5A3CAD;
+  --t1:#101A30;--t2:#48577A;--t3:#8694B0;
+  --shadow:0 12px 36px rgba(20,40,90,0.12);
+}}
+html,body{{min-height:100%;background:var(--bg);font-family:'Vazirmatn',sans-serif;color:var(--t1);font-size:14px;transition:background .35s,color .35s}}
+.bg-fx{{position:fixed;inset:0;background:radial-gradient(ellipse 70% 45% at 50% -8%,rgba(157,123,240,0.13),transparent 62%),var(--bg);z-index:0;pointer-events:none}}
+.wrap{{position:relative;z-index:10;max-width:800px;margin:0 auto;padding:24px 16px 64px}}
+.top{{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px}}
+.brand{{display:flex;align-items:center;gap:11px}}
+.brand-name{{font-size:14.5px;font-weight:800;color:var(--t1)}}
+.sub-info{{background:var(--card);border:1px solid var(--card-b);border-radius:22px;padding:24px;margin-bottom:16px}}
+.sub-name{{font-size:22px;font-weight:800;color:var(--t1);margin-bottom:6px}}
+.sub-desc{{font-size:12.5px;color:var(--t2);line-height:1.8;margin-bottom:14px}}
+.btn{{font-family:inherit;font-size:11.5px;font-weight:700;border-radius:10px;padding:8px 15px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none}}
+.btn-p{{background:linear-gradient(135deg,#2F8FFF,#8B5CF6);color:#fff}}
+.btn-pur{{background:var(--purple-bg);color:var(--purple-t);border:1px solid rgba(157,123,240,.2)}}
+.cfg-card{{background:var(--card);border:1px solid var(--card-b);border-radius:18px;padding:18px;margin-bottom:12px}}
+.cfg-label{{font-size:14.5px;font-weight:700;margin-bottom:8px}}
+.cfg-vless{{background:rgba(0,0,0,.2);border:1px solid var(--card-b);border-radius:10px;padding:10px;font-size:10px;font-family:monospace;color:var(--accent2);word-break:break-all}}
+.toast{{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(40px);background:var(--card);border:1px solid var(--card-b);color:var(--t1);border-radius:12px;padding:10px 20px;font-size:12.5px;opacity:0;transition:all .25s;z-index:999;pointer-events:none}}
+.toast.show{{opacity:1;transform:translateX(-50%) translateY(0)}}
+.toast.ok{{border-color:rgba(31,184,126,.35);background:var(--green-bg);color:var(--green-t)}}
+</style>
+</head>
+<body>
+<div class="bg-fx"></div>
+<div class="toast" id="toast"></div>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><div class="brand-name">Vexon-panel Sub Group</div></div>
+  </div>
+  <div id="root"><div style="text-align:center;padding:50px">در حال بارگذاری...</div></div>
+</div>
+<script>
+const SUB_ID='{sub_id}';
+function toast(msg,type=''){{
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}}
+async function loadGroupData(pw=''){{
+  const r=await fetch('/api/public/sub-group/'+SUB_ID+(pw?'?pw='+encodeURIComponent(pw):''));
+  return r.json();
+}}
+async function init(){{
+  try{{
+    const d=await loadGroupData();
+    if(d.locked){{
+      const pw=prompt('این گروه دارای رمز عبور است. لطفاً رمز عبور را وارد کنید:');
+      if(!pw)return;
+      const d2=await loadGroupData(pw);
+      if(d2.locked){{alert('رمز عبور اشتباه است');return}}
+      renderGroup(d2);
+    }}else{{
+      renderGroup(d);
+    }}
+  }}catch(e){{
+    document.getElementById('root').innerHTML='<div style="text-align:center;color:var(--red-t)">خطا در دریافت اطلاعات</div>';
+  }}
+}}
+function renderGroup(d){{
+  window._groupLinks=d.links||[];
+  document.getElementById('root').innerHTML=`
+    <div class="sub-info">
+      <div class="sub-name">${{d.name}}</div>
+      <div class="sub-desc">${{d.desc||''}}</div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-pur" onclick="navigator.clipboard.writeText('${{d.raw_sub_url}}').then(()=>toast('لینک ساب کپی شد','ok'))"><i class="ti ti-copy"></i> کپی لینک مستقیم ساب</button>
+        <button class="btn btn-p" onclick="copyAllGroup()"><i class="ti ti-clipboard-copy"></i> کپی همه کانفیگ‌ها</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;font-weight:700">کانفیگ‌های گروه (${{d.links.length}} عدد):</div>
+    ${{d.links.map(l=>`
+      <div class="cfg-card">
+        <div class="cfg-label">${{l.label}}</div>
+        <div class="cfg-vless">${{l.vless_link}}</div>
+        <div style="margin-top:10px">
+          <button class="btn btn-p" onclick="navigator.clipboard.writeText('${{l.vless_link}}').then(()=>toast('لینک کپی شد','ok'))"><i class="ti ti-copy"></i> کپی لینک</button>
+        </div>
+      </div>
+    `).join('')}}
+  `;
+}}
+function copyAllGroup(){{
+  const links=(window._groupLinks||[]).map(l=>l.vless_link).join('\\n');
+  if(!links){{toast('کانفیگی وجود ندارد');return}}
+  navigator.clipboard.writeText(links).then(()=>toast('همه کانفیگ‌ها کپی شدند ✓','ok'));
+}}
+init();
+</script>
+</body></html>"""
 
 def get_public_page_html(uuid_key: str) -> str:
     """صفحه پابلیک ساب v3 — طراحی حرفه‌ای‌تر: لینک کانفیگ پنهان با دکمه نمایش، صفحه‌ی رمز با طراحی ویژه"""

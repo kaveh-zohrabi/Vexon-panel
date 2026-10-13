@@ -48,7 +48,16 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DATA_FILE = DATA_DIR / "vexon_state.json"
 SECRET_FILE = DATA_DIR / "vexon_secret.key"
 ADMIN_PW_FILE = DATA_DIR / "vexon_admin_pw.txt"
-SAVE_LOCK = asyncio.Lock()
+_save_locks: dict = {}
+
+def get_save_lock():
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop not in _save_locks:
+        _save_locks[loop] = asyncio.Lock()
+    return _save_locks[loop]
 
 def _load_or_create_secret() -> str:
     """SECRET_KEY را روی دیسک ذخیره و ثابت نگه می‌دارد."""
@@ -182,7 +191,7 @@ async def load_state():
         logger.warning(f"Could not load state: {e}")
 
 async def save_state():
-    async with SAVE_LOCK:
+    async with get_save_lock():
         try:
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             data = await _serialize_state()
@@ -307,17 +316,22 @@ LOGIN_ATTEMPTS: dict = {}
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_WINDOW_SEC = 5 * 60
 
-def _check_login_rate(ip: str) -> bool:
+def _is_login_rate_limited(ip: str) -> bool:
+    now = time.time()
+    entry = LOGIN_ATTEMPTS.get(ip)
+    if entry is None or now - entry[1] > LOGIN_WINDOW_SEC:
+        return False
+    count, _ = entry
+    return count >= LOGIN_MAX_ATTEMPTS
+
+def _record_failed_login(ip: str):
     now = time.time()
     entry = LOGIN_ATTEMPTS.get(ip)
     if entry is None or now - entry[1] > LOGIN_WINDOW_SEC:
         LOGIN_ATTEMPTS[ip] = (1, now)
-        return True
-    count, first = entry
-    if count >= LOGIN_MAX_ATTEMPTS:
-        return False
-    LOGIN_ATTEMPTS[ip] = (count + 1, first)
-    return True
+    else:
+        count, first = entry
+        LOGIN_ATTEMPTS[ip] = (count + 1, first)
 
 # ── رمز پیش‌فرض رندوم ────────────────────────────────────────────────────────
 def _load_or_create_admin_password() -> str:
@@ -480,7 +494,12 @@ def is_link_expired(link: dict) -> bool:
     if not exp:
         return False
     try:
-        return datetime.now() > datetime.fromisoformat(exp)
+        dt = datetime.fromisoformat(exp)
+        if dt.tzinfo is not None:
+            now = datetime.now(dt.tzinfo)
+        else:
+            now = datetime.now()
+        return now > dt
     except Exception:
         return False
 
@@ -570,17 +589,19 @@ async def subscription_all(request: Request, _=Depends(require_auth)):
 async def api_login(request: Request):
     body = await request.json()
     ip = client_ip(request)
-    if not _check_login_rate(ip):
+    if _is_login_rate_limited(ip):
         log_activity("auth", f"قفل شدن لاگین از {ip} (بیش از {LOGIN_MAX_ATTEMPTS} تلاش)", "err")
         raise HTTPException(status_code=429, detail="تعداد تلاش‌های ورود بیش از حد مجاز است. لطفاً چند دقیقه صبر کنید")
     username = str(body.get("username", "")).strip()
     password = str(body.get("password", ""))
     totp_code = str(body.get("totp", "")).strip() if body.get("totp") else None
     if not username or not password:
+        _record_failed_login(ip)
         raise HTTPException(status_code=401, detail="نام کاربری و رمز عبور الزامی است")
     async with USERS_LOCK:
         user = USERS.get(username)
     if not user or not verify_password(password, user["password_hash"]):
+        _record_failed_login(ip)
         log_activity("auth", f"تلاش ورود ناموفق از {ip} (کاربر: {username})", "err")
         raise HTTPException(status_code=401, detail="نام کاربری یا رمز عبور اشتباه است")
     # بررسی TOTP اگر فعال باشه
@@ -591,6 +612,7 @@ async def api_login(request: Request):
             raise HTTPException(status_code=500, detail="TOTP در دسترس نیست (پکیج pyotp نصب نیست)")
         totp = pyotp.TOTP(user["totp_secret"])
         if not totp.verify(totp_code, valid_window=1):
+            _record_failed_login(ip)
             log_activity("auth", f"کد TOTP نامعتبر از {ip} (کاربر: {username})", "err")
             raise HTTPException(status_code=401, detail="کد یک‌بار مصرف اشتباه است")
     # مهاجرت خودکار هش قدیمی
@@ -1083,6 +1105,248 @@ async def delete_link(uid: str, _=Depends(require_auth)):
     if label is None:
         raise HTTPException(status_code=404, detail="link not found")
     return {"ok": True, "deleted": uid}
+
+@app.get("/api/links/{uid}/history")
+async def get_link_history(uid: str, _=Depends(require_auth)):
+    async with LINKS_LOCK:
+        link = LINKS.get(uid)
+    if not link:
+        raise HTTPException(status_code=404, detail="link not found")
+
+    daily = link.get("daily_history", {})
+    days = []
+    today = now_ir().date()
+    for i in range(29, -1, -1):
+        d = (today - timedelta(days=i)).isoformat()
+        days.append({"date": d, "bytes": daily.get(d, 0)})
+    return {"uuid": uid, "label": link.get("label", ""), "days": days}
+
+# ── System Backup & Restore ──────────────────────────────────────────────────
+@app.get("/api/system/backup")
+async def get_system_backup(_=Depends(require_admin)):
+    data = await _serialize_state()
+    filename = f"vexon_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    if _use_orjson:
+        payload = orjson.dumps(data)
+    else:
+        payload = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+    return Response(
+        content=payload,
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+@app.post("/api/system/restore")
+async def restore_system_backup(request: Request, _=Depends(require_admin)):
+    global LINKS, SUBS, USERS
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="فرمت داده‌های پشتیبان نامعتبر است (JSON لازم است)")
+
+    if not isinstance(body, dict) or "links" not in body:
+        raise HTTPException(status_code=400, detail="ساختار فایل پشتیبان نامعتبر است")
+
+    async with LINKS_LOCK:
+        LINKS.clear()
+        LINKS.update(body.get("links", {}))
+
+    async with SUBS_LOCK:
+        SUBS.clear()
+        SUBS.update(body.get("subs", {}))
+
+    if "users" in body and isinstance(body["users"], dict) and body["users"]:
+        async with USERS_LOCK:
+            USERS.clear()
+            USERS.update(body["users"])
+
+    if "password_changed" in body:
+        AUTH["password_changed"] = bool(body["password_changed"])
+
+    await save_state()
+    log_activity("system", "پشتیبان سیستم با موفقیت بازیابی شد", "ok")
+    return {"ok": True, "links_count": len(LINKS), "subs_count": len(SUBS), "users_count": len(USERS)}
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Sub Groups Management
+# ══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/subs")
+async def list_sub_groups(request: Request, _=Depends(require_auth)):
+    host = get_host(request)
+    async with SUBS_LOCK:
+        snap = dict(SUBS)
+    result = []
+    for sub_id, data in snap.items():
+        uuids = data.get("uuids", [])
+        result.append({
+            "id": sub_id,
+            "name": data.get("name", "گروه ساب"),
+            "desc": data.get("desc", ""),
+            "uuids": uuids,
+            "locked": bool(data.get("password")),
+            "created_at": data.get("created_at", ""),
+            "links_count": len(uuids),
+            "sub_url": f"https://{host}/p/group/{sub_id}",
+            "raw_sub_url": f"https://{host}/sub-group/{sub_id}",
+        })
+    result.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"subs": result}
+
+@app.post("/api/subs")
+async def create_sub_group(request: Request, _=Depends(require_auth)):
+    body = await request.json()
+    name = str(body.get("name", "")).strip() or "گروه جدید"
+    desc = str(body.get("desc", "")).strip()[:300]
+    uuids = body.get("uuids") or []
+    password = str(body.get("password", "")).strip()
+
+    sub_id = secrets.token_urlsafe(10)
+    async with SUBS_LOCK:
+        SUBS[sub_id] = {
+            "name": name[:80],
+            "desc": desc,
+            "uuids": list(set(str(u) for u in uuids)),
+            "password": hash_password(password) if password else None,
+            "created_at": datetime.now().isoformat(),
+        }
+    asyncio.create_task(save_state())
+    log_activity("sub", f"گروه ساب «{name}» ساخته شد", "ok")
+
+    host = get_host(request)
+    return {
+        "id": sub_id,
+        "name": name,
+        "sub_url": f"https://{host}/p/group/{sub_id}",
+        "raw_sub_url": f"https://{host}/sub-group/{sub_id}",
+    }
+
+@app.patch("/api/subs/{sub_id}")
+async def update_sub_group(sub_id: str, request: Request, _=Depends(require_auth)):
+    body = await request.json()
+    async with SUBS_LOCK:
+        if sub_id not in SUBS:
+            raise HTTPException(status_code=404, detail="sub group not found")
+        sub = SUBS[sub_id]
+        if "name" in body:
+            sub["name"] = str(body["name"]).strip()[:80] or "گروه ساب"
+        if "desc" in body:
+            sub["desc"] = str(body["desc"]).strip()[:300]
+        if "uuids" in body and isinstance(body["uuids"], list):
+            sub["uuids"] = list(set(str(u) for u in body["uuids"]))
+        if "password" in body:
+            pw = str(body["password"]).strip()
+            sub["password"] = hash_password(pw) if pw else None
+    asyncio.create_task(save_state())
+    log_activity("sub", f"گروه ساب «{sub['name']}» ویرایش شد", "info")
+    return {"ok": True}
+
+@app.delete("/api/subs/{sub_id}")
+async def delete_sub_group(sub_id: str, _=Depends(require_auth)):
+    async with SUBS_LOCK:
+        if sub_id not in SUBS:
+            raise HTTPException(status_code=404, detail="sub group not found")
+        name = SUBS[sub_id].get("name", sub_id)
+        del SUBS[sub_id]
+    asyncio.create_task(save_state())
+    log_activity("sub", f"گروه ساب «{name}» حذف شد", "err")
+    return {"ok": True}
+
+# ── Raw & Public Sub Group Endpoints ──────────────────────────────────────────
+@app.get("/sub-group/{sub_id}")
+async def subscription_group_raw(sub_id: str, request: Request):
+    async with SUBS_LOCK:
+        sub = SUBS.get(sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="sub group not found")
+
+    host = get_host(request)
+    async with LINKS_LOCK:
+        lines = []
+        for uid in sub.get("uuids", []):
+            link = LINKS.get(uid)
+            if link and is_link_allowed(link):
+                lines.append(vless_link_for_link(link, uid, host))
+    content = base64.b64encode("\n".join(lines).encode()).decode()
+    return Response(
+        content=content,
+        media_type="text/plain",
+        headers={"profile-title": quote(sub.get("name", "Vexon Sub Group"))},
+    )
+
+@app.get("/p/group/{sub_id}", response_class=HTMLResponse)
+async def public_sub_group_page(sub_id: str, request: Request):
+    from pages import get_public_group_page_html
+    async with SUBS_LOCK:
+        exists = sub_id in SUBS
+    if not exists:
+        return HTMLResponse("<h2 style='font-family:sans-serif;padding:40px'>گروه ساب پیدا نشد</h2>", status_code=404)
+    return HTMLResponse(content=get_public_group_page_html(sub_id))
+
+@app.get("/api/public/sub-group/{sub_id}")
+async def public_sub_group_data(sub_id: str, request: Request):
+    async with SUBS_LOCK:
+        sub = SUBS.get(sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="sub group not found")
+
+    host = get_host(request)
+    sub_pw = sub.get("password")
+
+    async with LINKS_LOCK:
+        group_links = []
+        total_used = 0
+        active_conns = 0
+        for uid in sub.get("uuids", []):
+            link = LINKS.get(uid)
+            if not link:
+                continue
+            allowed = is_link_allowed(link)
+            conn_count = sum(1 for c in connections.values() if c.get("uuid") == uid)
+            total_used += link.get("used_bytes", 0)
+            active_conns += conn_count
+            proto = link.get("protocol", DEFAULT_PROTOCOL)
+            group_links.append({
+                "uuid": uid,
+                "label": link["label"],
+                "active": allowed,
+                "protocol": proto,
+                "used_bytes": link.get("used_bytes", 0),
+                "used_fmt": fmt_bytes(link.get("used_bytes", 0)),
+                "limit_bytes": link.get("limit_bytes", 0),
+                "limit_fmt": "∞" if link.get("limit_bytes", 0) == 0 else fmt_bytes(link["limit_bytes"]),
+                "expires_at": link.get("expires_at"),
+                "vless_link": vless_link_for_link(link, uid, host),
+                "sub_url": f"https://{host}/sub/{uid}",
+                "connections": conn_count,
+            })
+
+    return {
+        "locked": bool(sub_pw),
+        "name": sub.get("name", "گروه ساب"),
+        "desc": sub.get("desc", ""),
+        "sub_url": f"https://{host}/p/group/{sub_id}",
+        "raw_sub_url": f"https://{host}/sub-group/{sub_id}",
+        "active_connections": active_conns,
+        "total_used_fmt": fmt_bytes(total_used),
+        "links": group_links if not sub_pw else [],
+    }
+
+@app.post("/api/public/sub-group/{sub_id}/unlock")
+async def public_sub_group_unlock(sub_id: str, request: Request):
+    body = await request.json()
+    password = str(body.get("password", "")).strip()
+    async with SUBS_LOCK:
+        sub = SUBS.get(sub_id)
+    if not sub:
+        raise HTTPException(status_code=404, detail="not found")
+    sub_pw = sub.get("password")
+    if not sub_pw:
+        return {"ok": True, "locked": False}
+    if not password:
+        raise HTTPException(status_code=401, detail="رمز عبور الزامی است")
+    if not verify_password(password, sub_pw):
+        raise HTTPException(status_code=401, detail="رمز عبور اشتباه است")
+    return {"ok": True, "locked": False}
 
 # ── Export CSV ────────────────────────────────────────────────────────────────
 @app.get("/api/links/export/csv")

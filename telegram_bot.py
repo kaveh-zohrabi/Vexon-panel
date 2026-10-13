@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 from main import (
     LINKS,
+    SUBS,
     USERS,
     make_link,
     remove_link,
@@ -142,8 +143,36 @@ def _is_admin(chat_id: int) -> bool:
 def _main_menu_kb():
     return {"inline_keyboard": [
         [{"text": "📋 لیست کانفیگ‌ها", "callback_data": "list:0"}],
+        [{"text": "📂 گروه‌های ساب", "callback_data": "sublist:0"}],
         [{"text": "➕ ساخت کانفیگ جدید", "callback_data": "newcfg"}],
         [{"text": "🔄 رفرش", "callback_data": "menu"}],
+    ]}
+
+def _subs_list_kb(page: int):
+    items = sorted(SUBS.items(), key=lambda kv: kv[1].get("created_at", ""), reverse=True)
+    total = len(items)
+    start = page * PAGE_SIZE
+    chunk = items[start:start + PAGE_SIZE]
+    rows = []
+    for sub_id, data in chunk:
+        lock = "🔒" if data.get("password") else "🌐"
+        name = data.get("name", "گروه ساب")[:28]
+        cnt = len(data.get("uuids", []))
+        rows.append([{"text": f"{lock} {name} ({cnt} کانفیگ)", "callback_data": f"subview:{sub_id}"}])
+    nav = []
+    if start > 0:
+        nav.append({"text": "◀ قبلی", "callback_data": f"sublist:{page-1}"})
+    if start + PAGE_SIZE < total:
+        nav.append({"text": "بعدی ▶", "callback_data": f"sublist:{page+1}"})
+    if nav:
+        rows.append(nav)
+    rows.append([{"text": "⬅ منوی اصلی", "callback_data": "menu"}])
+    return {"inline_keyboard": rows}
+
+def _sub_detail_kb(sub_id: str):
+    return {"inline_keyboard": [
+        [{"text": "🔗 کپی لینک ساب مستقیم", "callback_data": f"sublink:{sub_id}"}],
+        [{"text": "⬅ بازگشت به لیست گروه‌ها", "callback_data": "sublist:0"}],
     ]}
 
 def _links_list_kb(page: int):
@@ -416,6 +445,51 @@ async def _handle_callback(cb: dict):
             await _edit(chat_id, message_id, "هنوز هیچ کانفیگی ساخته نشده.", _main_menu_kb())
             return
         await _edit(chat_id, message_id, f"📋 لیست کانفیگ‌ها ({len(LINKS)} مورد):", _links_list_kb(page))
+        return
+
+    if data.startswith("sublist:"):
+        page = int(data.split(":", 1)[1] or 0)
+        if not SUBS:
+            await _edit(chat_id, message_id, "هنوز هیچ گروه سابی ساخته نشده.", _main_menu_kb())
+            return
+        await _edit(chat_id, message_id, f"📂 لیست گروه‌های ساب ({len(SUBS)} مورد):", _subs_list_kb(page))
+        return
+
+    if data.startswith("subview:"):
+        sub_id = data.split(":", 1)[1]
+        s = SUBS.get(sub_id)
+        if not s:
+            await _edit(chat_id, message_id, "این گروه ساب پیدا نشد.", _main_menu_kb())
+            return
+        host = get_host()
+        uuids = s.get("uuids", [])
+        lock = "🔒 دارای رمز" if s.get("password") else "🌐 عمومی"
+        msg = (
+            f"<b>📂 گروه ساب: {s.get('name')}</b>\n"
+            f"توضیحات: {s.get('desc') or 'بدون توضیح'}\n"
+            f"دسترسی: {lock}\n"
+            f"تعداد کانفیگ: {len(uuids)} عدد\n\n"
+            f"✨ صفحه عمومی: https://{host}/p/group/{sub_id}\n"
+            f"🔗 لینک ساب مستقیم: <code>https://{host}/sub-group/{sub_id}</code>"
+        )
+        await _edit(chat_id, message_id, msg, _sub_detail_kb(sub_id))
+        return
+
+    if data.startswith("sublink:"):
+        sub_id = data.split(":", 1)[1]
+        s = SUBS.get(sub_id)
+        if not s:
+            await _answer_cb(cb_id, "گروه پیدا نشد")
+            return
+        host = get_host()
+        raw_url = f"https://{host}/sub-group/{sub_id}"
+        pub_url = f"https://{host}/p/group/{sub_id}"
+        msg = (
+            f"📂 لینک‌های گروه «{s.get('name')}»:\n\n"
+            f"🔗 لینک مستقیم ساب:\n<code>{raw_url}</code>\n\n"
+            f"✨ صفحه عمومی وب:\n<code>{pub_url}</code>"
+        )
+        await _send(chat_id, msg)
         return
 
     if data == "newcfg":

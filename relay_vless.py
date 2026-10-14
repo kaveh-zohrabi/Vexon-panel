@@ -72,10 +72,6 @@ async def check_and_use(uid: str, n: int) -> bool:
         link["used_bytes"] += n
         stats["total_bytes"] += n
         hourly_traffic[now_ir().strftime("%H:00")] += n
-
-        today_str = now_ir().strftime("%Y-%m-%d")
-        history = link.setdefault("daily_history", {})
-        history[today_str] = history.get(today_str, 0) + n
     return True
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):
